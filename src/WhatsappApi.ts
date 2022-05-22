@@ -1,8 +1,6 @@
 import axios, { AxiosError } from 'axios';
-import express, { NextFunction } from 'express';
+import express from 'express';
 import bodyParser from 'body-parser';
-import sha1 from 'sha1';
-import escapeUnicode from 'escape-unicode';
 import crypto from 'crypto';
 
 import { WhatsappApiError } from './errors';
