@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
-import express from 'express';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
+import express from 'express';
 
 import { WhatsappApiError } from './errors';
 
@@ -18,24 +18,60 @@ class WhatsappAPI {
     private accountPhoneNumberId: string;
     private accessToken: string;
     private expressApp?: express.Application;
-    private appSecret?: string;
+    private fbAppSecret?: string;
+    private webhookRouter?: express.Router;
+    private webhookPort?: number;
+    private webhookVerifyToken?: string;
     
-    constructor(accountPhoneNumberId: string, accessToken: string, appSecret?: string) {
-        console.log(appSecret)
-        this.accountPhoneNumberId = accountPhoneNumberId;
-        this.accessToken = accessToken;
-        this.appSecret = appSecret;
+    constructor(options: {
+        accountPhoneNumberId: string,
+        accessToken: string,
+        webhook?: {
+            expressApp?: express.Application,
+            port?: number,
+            fbAppSecret: string,
+            verifyToken: string,
+        },
+    }) {
+        this.accountPhoneNumberId = options.accountPhoneNumberId;
+        this.accessToken = options.accessToken;
+        if (options.webhook) {
+            this.expressApp = options.webhook.expressApp;
+            this.fbAppSecret = options.webhook.fbAppSecret;
+            this.webhookPort = options.webhook.port || 1337;
+            this.webhookVerifyToken = options.webhook.verifyToken;
+        }
     }
 
     public initWebhook(callback: Function) {
-        this.expressApp = express().use(bodyParser.json({
-            verify(req: express.Request & { rawBody: string | Buffer }, res, buf) {
+        let shouldAppListen: boolean = false;
+        if (!this.expressApp) {
+            this.expressApp = express();
+            shouldAppListen = true;
+        }
+
+        this.webhookRouter = express.Router().use(bodyParser.json({
+            verify(req: express.Request & { rawBody: string | Buffer }, res: express.Response, buf: Buffer) {
               req.rawBody = buf.toString();
             },
         }));
 
-        this.expressApp.post('/webhook', (req: express.Request & { rawBody?: string }, res: express.Response, next: express.NextFunction) => {
-            const hmac: crypto.Hmac = crypto.createHmac('sha1', this?.appSecret || 'N/A');
+        this.webhookRouter.get('/webhook', (req: express.Request, res: express.Response) => {            
+            const mode = req.query['hub.mode'],
+                  token = req.query['hub.verify_token'],
+                  challenge = req.query['hub.challenge'];
+
+            if (mode && token) {
+                if (mode === 'subscribe' && token === this.webhookVerifyToken) {
+                    res.status(200).send(challenge);
+                } else {
+                    res.sendStatus(403);
+                }
+            }
+        });
+
+        this.webhookRouter.post('/webhook', (req: express.Request & { rawBody?: string }, res: express.Response, next: express.NextFunction) => {
+            const hmac: crypto.Hmac = crypto.createHmac('sha1', this?.fbAppSecret || 'N/A');
             hmac.update(req.rawBody || '', 'ascii');
     
             const expectedSignature: string = hmac.digest('hex');
@@ -56,12 +92,17 @@ class WhatsappAPI {
             })
 
             if(payload){
-              res.sendStatus(200);
+                res.sendStatus(200);
             } else {
-              res.sendStatus(404);
+                res.sendStatus(404);
             }
         });
-        this.expressApp.listen(process.env.PORT || 1337, () => console.log('webhook is listening'));
+
+        this.expressApp.use('/whatsapp', this.webhookRouter);
+
+        if (shouldAppListen) {
+            this.expressApp.listen(this.webhookPort, () => console.log(`Whatsapp Webhook is listening on port ${this.webhookPort}`));
+        }
     }
 
     public parseIncomingMessage(payload: WebhookRequestPayload) {
