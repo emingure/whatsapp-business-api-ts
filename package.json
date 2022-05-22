@@ -1,0 +1,70 @@
+{
+  "name": "whatsapp-business-api",
+  "version": "0.0.1",
+  "description": "A Wrapper for Whatsapp Business Cloud API hosted by Meta.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write \"src/**/*.(js|ts)\"",
+    "lint": "eslint src --ext .js,.ts",
+    "lint:fix": "eslint src --fix --ext .js,.ts",
+    "test": "jest --config jest.config.js",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run lint",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emingure/whatsapp-business-api-ts.git"
+  },
+  "keywords": [
+    "whatsapp",
+    "whatsapp-business",
+    "whatsapp-api",
+    "meta",
+    "facebook",
+    "whatsapp-cloud-api",
+    "messaging",
+    "chat"
+  ],
+  "author": {
+    "name": "Muhammed Emin Gure",
+    "url": "https://github.com/emingure"
+  },
+  "contributors": [
+    {
+      "name": "Abdurrahman Dilmac",
+      "url": "https://github.com/cerob"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/emingure/whatsapp-business-api-ts/issues"
+  },
+  "homepage": "https://github.com/emingure/whatsapp-business-api-ts#readme",
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/jest": "27.4.0",
+    "@typescript-eslint/eslint-plugin": "5.10.2",
+    "@typescript-eslint/parser": "5.10.2",
+    "eslint": "7.32.0",
+    "eslint-plugin-jest": "26.0.0",
+    "jest": "27.4.7",
+    "prettier": "2.5.1",
+    "ts-jest": "27.1.3",
+    "typescript": "4.5.5"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "axios": "^0.27.2",
+    "body-parser": "^1.20.0",
+    "crypto": "^1.0.1",
+    "express": "^4.18.1"
+  }
+}
