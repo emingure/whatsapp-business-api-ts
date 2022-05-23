@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-business-api",
-  "version": "0.0.3-fix-1",
+  "version": "0.0.4",
   "description": "A Wrapper for Whatsapp Business Cloud API hosted by Meta.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
