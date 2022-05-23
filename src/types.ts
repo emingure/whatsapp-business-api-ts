@@ -1,10 +1,17 @@
-export enum MessageTypes {
-    TEXT = "text"
-}
+import {
+    MessageTypes,
+} from './constants';
 
 export type OutgoingTextPayload = {
     preview_url: boolean;
     body: string;
+}
+
+export type OutgoingMediaPayload = {
+    id?: string;
+    link?: string;
+    caption?: string;
+    filename?: string;
 }
 
 export type ApiRequestPayload = {
@@ -13,6 +20,7 @@ export type ApiRequestPayload = {
     to: string;
     type: MessageTypes;
     text?: OutgoingTextPayload;
+    image?: OutgoingMediaPayload;
 }
 
 export type ApiRequestHeader = {

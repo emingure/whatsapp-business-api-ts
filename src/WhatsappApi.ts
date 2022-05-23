@@ -2,15 +2,21 @@ import axios, { AxiosError } from 'axios';
 import bodyParser from 'body-parser';
 import crypto from 'crypto';
 import express from 'express';
+import FormData from 'form-data';
+import fs from 'fs';
+import mime from 'mime-types';
 
+import {
+    GraphAPIBaseUrl,
+    MessageTypes,
+    SupportedMediaTypes,
+} from './constants';
 import { WhatsappApiError } from './errors';
-
 import {
     ApiRequestHeader,
     ApiRequestPayload,
-    MessageTypes,
-    WebhookRequestPayload,
     IncomingMessage,
+    WebhookRequestPayload,
 } from './types';
 
 
@@ -122,14 +128,14 @@ class WhatsappAPI {
         return messages;
     }
     
-    private async sendRequest(payload: any) {
-        const url: string = `https://graph.facebook.com/v13.0/${this.accountPhoneNumberId}/messages`;
+    private async sendRequest(url: string, payload: object | FormData) {
+        const fullUrl: string = `${GraphAPIBaseUrl}/${url}`;
         const headers: ApiRequestHeader = {
             Authorization: `Bearer ${this.accessToken}`,
         }
 
         try {
-            const response = await axios.post(url, payload, {
+            const response = await axios.post(fullUrl, payload, {
                 headers,
             })
             return response.data;
@@ -143,18 +149,93 @@ class WhatsappAPI {
         }
     }
 
-    public async sendTextMessage(to: string, message: string) {
+    private extractMediaType(path: string): [string, MessageTypes] {
+        const mimeType = mime.lookup(path);
+        if (!mimeType || !SupportedMediaTypes[mimeType]) {
+            throw new Error(`Unsupported media type: ${mimeType}`);
+        }
+        return [mimeType, SupportedMediaTypes[mimeType]]
+    }
+
+    private async uploadMedia(path: string): Promise<[string, MessageTypes]> {
+        const [mimeType, messageType] = this.extractMediaType(path);
+
+        const data = new FormData();
+        data.append("file", fs.createReadStream(path));
+        data.append("type", mimeType);
+        data.append("messaging_product", "whatsapp");
+        
+        const mediaResponse = await this.sendRequest(`${this.accountPhoneNumberId}/media`, data);
+        return [mediaResponse.id, messageType];
+    }
+
+    public async sendTextMessage(
+        to: string,
+        options: {
+            message: string,
+            preview_url?: boolean,
+        },
+    ) {
         const payload: ApiRequestPayload = {
             messaging_product: "whatsapp",
             recipient_type: "individual",
             to,
             type: MessageTypes.TEXT,
             text: {
-                body: message,
-                preview_url: true,
+                body: options.message,
+                preview_url: options.preview_url || true,
             },
         }
-        return this.sendRequest(payload);
+        return this.sendRequest(`${this.accountPhoneNumberId}/messages`, payload);
+    }
+
+    public async sendMediaMessage(
+        to: string,
+        options: {
+            external_link?: string,
+            local_path?: string,
+            caption?: string,
+            filename?: string, // only for documents
+        }
+    ) {
+        if (options.local_path && options.external_link) {
+            throw new Error("You must choose local_path or external_link to send image message!")
+        }
+
+        let media;
+        let messageType: MessageTypes = MessageTypes.IMAGE; // default
+        if (options.local_path) {
+            const [mediaId, uploadedMediaType] = await this.uploadMedia(options.local_path)
+            media = {
+                caption: options.caption,
+                id: mediaId,
+                filename: options.filename,
+            }
+            messageType = uploadedMediaType;
+        } else if (options.external_link) {
+            const [_, extractedMediaType] = this.extractMediaType(options.external_link);
+            media = {
+                link: options.external_link,
+                caption: options.caption,
+                filename: options.filename,
+            }
+            messageType = extractedMediaType;
+        } else {
+            throw new Error("Either local_path or external_link parameter must be set to send image message!");
+        }
+
+        if (messageType !== MessageTypes.DOCUMENT && options.filename) {
+            throw new Error("filename parameter is only applicable for sending Documents!")
+        }
+
+        const payload: ApiRequestPayload = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to,
+            type: messageType,
+            [messageType]: media,
+        }
+        return this.sendRequest(`${this.accountPhoneNumberId}/messages`, payload);
     }
 
 }

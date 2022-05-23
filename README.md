@@ -4,7 +4,25 @@ A Wrapper for Whatsapp Business Cloud API hosted by Meta.
 
 Official API Documentation: [Meta for Developers](https://developers.facebook.com/docs/whatsapp/cloud-api/overview)
 
+## Capabilities
+
 > Note: **This package is WIP**. The capabilities of Cloud API will be reflected soon. Feel free to contribute!
+
+- [ ] Sending Messages
+  - [x] Text
+  - [x] Media (image, video, audio, document, sticker)
+  - [ ] Contact
+  - [ ] Location
+  - [ ] Interactive
+  - [ ] Template
+- [ ] Receiving Message (via Webhook)
+  - [x] Text
+  - [ ] Media (image, video, audio, document, sticker)
+  - [ ] Contact
+  - [ ] Location
+  - [ ] Interactive
+  - [ ] Button
+
 
 ## Installation
 ```
@@ -52,4 +70,31 @@ const echoMessage = async (message: IncomingMessage) => {
 }
 
 wp.initWebhook(echoMessage);
+```
+
+## Reference
+
+### Text Message
+```typescript
+sendTextMessage(
+  to: string, // Phone number to send message.
+  options: {
+    message: string, // Message body to send.
+    preview_url?: boolean, // Whether urls in body should have preview. Default: true
+  },
+)
+```
+
+### Media Message
+Supported media types can be found in `src/contants.ts`.
+```typescript
+sendMediaMessage(
+  to: string, // Phone number to send message.
+  options: {
+    external_link?: string, // Globally accesible link of media.
+    local_path?: string, // Full local path of the media file to upload and send.
+    caption?: string, // Caption of the media.
+    filename?: string, // Name of the file to show as preview. It is only applicable for sending documents.
+  }
+)
 ```
